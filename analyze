@@ -1,0 +1,112 @@
+import heapq
+
+import numpy as np
+
+company_data = [[40.4,24.7,7.2,6.1,8.3,8.7,2.442,20]]
+company_data.append([25,12.7,11.2,11.0,12.9,20.2,3.542,9.1])
+company_data.append([13.2,3.3,3.9,4.3,4.4,5.5,0.578,3.6])
+company_data.append([22.3,6.7,5.6,3.7,6,7.4,0.176,7.3])
+company_data.append([34.3,11.8,7.1,7.1,8,8.9,1.726,27.5])
+company_data.append([35.6,12.5,16.4,16.7,22.8,29.3,3.017,26.6])
+company_data.append([22,7.8,9.9,10.2,12.6,17.6,0.847,10.6])
+company_data.append([48.4,13.4,10.9,9.9,10.9,13.9,1.772,17.8])
+company_data.append([40.6,19.1,19.8,19,29.7,39.6,2.449,35.8])
+company_data.append([24.8,8,9.8,8.9,11.9,16.2,0.789,13.7])
+company_data.append([12.5,9.7,4.2,4.2,4.6,6.5,0.874,3.9])
+company_data.append([1.8,0.6,0.7,0.7,0.8,1.1,0.056,1])
+company_data.append([32.3,13.9,9.4,8.3,9.8,13.3,2.216,17.1])
+company_data.append([38.5,9.1,11.3,9.5,12.2,16.4,1.327,11.6])
+company_data.append([26.2,10.1,5.6,15.6,7.7,30.1,0.126,25.9])
+company_data = np.array(company_data)
+print(company_data.shape)
+print(company_data)
+
+meanValue = np.mean(company_data, axis=0)  #对列求均值
+print(meanValue.shape)
+print(meanValue)
+
+#规范化数据
+company_data_norm = company_data - meanValue #减去平均值
+print(company_data_norm.shape)
+print(company_data_norm)
+
+#PCA降维
+covMat = np.cov(company_data_norm, rowvar=0) #协方差矩阵
+print(covMat.shape)
+print(covMat)
+
+Values,Vectors = np.linalg.eig(np.mat(covMat)) #特征值和特征向量
+print(Values.shape)
+print(Values)
+print(Vectors.shape)
+print(Vectors)
+
+def Find_PCA_n(Values,save_n):   # 保留指定信息成分
+    find_PCA_n = Values.tolist()
+    find_PCA_n.sort(reverse = True) # 降序排列
+    var_n = 0
+    for i in range(len(find_PCA_n)):
+        var_n = var_n + find_PCA_n[i]
+        if var_n>sum(find_PCA_n)*save_n:
+            print(var_n/sum(find_PCA_n))
+            return i
+
+PCA_n = Find_PCA_n(Values,0.9) + 1      #找出满足要求的主成分特征向量
+print(PCA_n)
+Values_max = heapq.nlargest(PCA_n, Values) # 将列表中的数据以降序形式排列形成一个“堆”，这里取出最大的前两个元素，已按降序排列好
+Values_list = Values.tolist()
+Values_index = list(map(Values_list.index, heapq.nlargest(PCA_n, Values_list))) # 获取列表中最大的前n个数值的位置索引
+print(Values_max)
+print(Values_index)
+
+Vetcors_max = []
+for i in Values_index:
+    Vetcors_max.append(Vectors[i,:])
+Vetcors_max = np.array(Vetcors_max).reshape(PCA_n,-1)
+print(Vetcors_max.shape)
+print(Vetcors_max)
+
+mo = []
+mo_add = 0
+for i in range(Vetcors_max.shape[1]):
+    print(Vetcors_max[1,i])
+    mo_add = mo_add + Vetcors_max[1,i]**2
+mo.append(mo_add**0.5)
+print(mo)
+
+company_data_PCA = np.mat(company_data_norm) * (np.mat(Vetcors_max).T) # 降到PCA_n维度,特征向量的长度为1，可做基向量
+print(company_data_PCA.shape)
+print(company_data_PCA)
+
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)   #可以指定方差或者维度
+pca.fit(company_data)
+print(pca.explained_variance_ratio_)   #方差
+print(pca.explained_variance_)         #对应的特征向量
+
+company_data_new = pca.transform(company_data)
+print(company_data_new)
+print(company_data_new.shape)
+print("True")
+
+######################################################################################
+######################################################################################
+
+#数据分析
+company_ratio = Values_max[0]/Values_max[1]  #把方差作为企业效益评比权重
+print(company_ratio)
+
+OUT_PCA_company = []
+for i in range(company_data_new.shape[0]):
+    OUT_PCA_company.append(company_ratio*company_data_new[i,0] + company_data_new[i,1])
+print(OUT_PCA_company)
+PCA_id = sorted(OUT_PCA_company,reverse = True) # 降序
+PCA_id = sorted(range(len(OUT_PCA_company)), key=lambda k: OUT_PCA_company[k])
+print(PCA_id)
+
+# print(np.sort(OUT_PCA_company))
+pca_id = (-OUT_PCA_company).argsort() + 1
+print("企业效益降序排序结果如下，数字对应相应企业序号：")
+print()
+print (pca_id)
